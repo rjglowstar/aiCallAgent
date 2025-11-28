@@ -1,7 +1,24 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Env
+.env
+*.env
+.extra_env
+
+# Logs
+logs/
+*.log
+
+# System
+.DS_Store
+Thumbs.db
+
+# Personal files
+Extra_Info.txt
+
 /.angular/cache
 .vs/
 .vscode/settings.json
-node_modules/
-.env
-*.env
-Extra_Info.txt
