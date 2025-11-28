@@ -4,11 +4,5 @@
     "phone": "+917817045624",
     "type": "payment",
     "dueAmount": 35000
-  },
-  {
-    "name": "Sandip",
-    "phone": "+917878334322",
-    "type": "payment",
-    "dueAmount": 35000
   }
 ]
