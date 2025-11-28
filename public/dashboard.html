@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AI Call Agent Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+
+        button {
+            padding: 6px 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Customer List</h2>
+
+    <table id="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Call Time</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <br>
+
+    <button onclick="addRow()">Add New</button>
+    <button onclick="saveAll()">Save All</button>
+
+    <script>
+        let customers = [];
+
+        fetch("/api/customers")
+            .then(r => r.json())
+            .then(data => { customers = data; render(); });
+
+        function render() {
+            const body = document.querySelector("#table tbody");
+            body.innerHTML = "";
+
+            customers.forEach((c, i) => {
+                body.innerHTML += `
+      <tr>
+        <td><input value="${c.name}" onchange="update(${i}, 'name', this.value)"></td>
+        <td><input value="${c.phone}" onchange="update(${i}, 'phone', this.value)"></td>
+        <td><input value="${c.type}" onchange="update(${i}, 'type', this.value)"></td>
+        <td><input value="${c.dueAmount}" onchange="update(${i}, 'dueAmount', this.value)"></td>
+        <td><input value="${c.callTime}" onchange="update(${i}, 'callTime', this.value)"></td>
+        <td>
+          <button onclick="callNow('${c.phone}')">Call</button>
+          <button onclick="removeRow(${i})">Delete</button>
+        </td>
+      </tr>
+    `;
+            });
+        }
+
+        function update(i, key, value) { customers[i][key] = value; }
+
+        function addRow() {
+            customers.push({ name: "", phone: "", type: "", dueAmount: "", callTime: "" });
+            render();
+        }
+
+        function removeRow(i) { customers.splice(i, 1); render(); }
+
+        function saveAll() {
+            fetch("/api/customers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(customers)
+            }).then(() => alert("Saved!"));
+        }
+
+        function callNow(phone) {
+            fetch("/api/call", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone })
+            })
+                .then(r => r.json())
+                .then(res => alert(res.message));
+        }
+    </script>
+
+</body>
+
+</html>

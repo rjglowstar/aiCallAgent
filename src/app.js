@@ -4,18 +4,42 @@ const bodyParser = require('body-parser');
 const { VoiceResponse } = require('twilio').twiml;
 const { getAssistantReply } = require('./assistant');
 
+const fs = require("fs");
+const path = require("path");
+const { makeCall } = require("./makeCall");
+
 const app = express();
 
-// Twilio sends x-www-form-urlencoded
+// Parse Twilio webhook (speech)
 app.use(bodyParser.urlencoded({ extended: false }));
+
+// Parse JSON for dashboard API
 app.use(express.json());
 
-// Test route
+// Serve public dashboard
+app.use(express.static("public"));
+
+// File path
+const customersFile = path.join(__dirname, "../data/customers.json");
+
+
+// ----------------------------------------
+// TEST ROUTE
+// ----------------------------------------
 app.get('/', (req, res) => {
   res.send('Voice Agent Server Running');
 });
 
-// MAIN TWILIO WEBHOOK
+// ----------------------------------------
+// HEALTH CHECK (Render)
+app.get("/healthz", (req, res) => res.send("OK"));
+// ----------------------------------------
+
+
+
+// ====================================================================
+//  🔥🔥  ORIGINAL TWILIO AI VOICE WEBHOOK (YOUR WORKING CODE)
+// ====================================================================
 app.post('/twilio/voice', async (req, res) => {
   console.log('\n--- Twilio Webhook HIT ---');
   console.log('Body:', req.body);
@@ -68,7 +92,47 @@ app.post('/twilio/voice', async (req, res) => {
     return res.send(twiml.toString());
   }
 });
+// ====================================================================
+//  END ORIGINAL WORKING AI CALL FLOW
+// ====================================================================
 
+
+
+// ----------------------------------------
+// GET ALL CUSTOMERS
+// ----------------------------------------
+app.get("/api/customers", (req, res) => {
+  const data = fs.readFileSync(customersFile, "utf8");
+  res.json(JSON.parse(data));
+});
+
+// ----------------------------------------
+// SAVE CUSTOMERS (ADD/EDIT/DELETE)
+// ----------------------------------------
+app.post("/api/customers", (req, res) => {
+  fs.writeFileSync(customersFile, JSON.stringify(req.body, null, 2));
+  res.json({ success: true });
+});
+
+// ----------------------------------------
+// MANUAL CALL NOW
+// ----------------------------------------
+app.post("/api/call", async (req, res) => {
+  const { phone } = req.body;
+
+  try {
+    await makeCall(phone);
+    res.json({ success: true, message: "Call started" });
+  } catch (err) {
+    console.error(err);
+    res.json({ success: false, message: "Error starting call" });
+  }
+});
+
+
+// ----------------------------------------
+// START SERVER
+// ----------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n✔ Server running on port ${PORT}`);

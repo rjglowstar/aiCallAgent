@@ -3,6 +3,7 @@
     "name": "Ravi Jethva",
     "phone": "+917817045624",
     "type": "payment",
-    "dueAmount": 35000
+    "dueAmount": 35000,
+    "callTime": "16:20"
   }
 ]

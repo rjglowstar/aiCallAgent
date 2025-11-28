@@ -1,6 +1,7 @@
 require('dotenv').config();
 const twilio = require('twilio');
 
+// Twilio client
 const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
 
 async function startCall(to) {
@@ -8,7 +9,7 @@ async function startCall(to) {
     console.log('Calling:', to);
 
     const call = await client.calls.create({
-      url: `${process.env.NGROK_URL}/twilio/voice`,
+      url: `${process.env.BASE_URL}/twilio/voice`,   // updated for Render
       to,
       from: process.env.TWILIO_NUMBER
     });
@@ -19,5 +20,7 @@ async function startCall(to) {
   }
 }
 
-// Usage: node src/makeCall.js +9178xxxxxx
+// Usage example: node src/makeCall.js +9178xxxxxx
 startCall(process.argv[2]);
+
+module.exports = { startCall };
