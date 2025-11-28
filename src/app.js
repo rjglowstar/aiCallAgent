@@ -1,8 +1,8 @@
-require('dotenv').config();
-const express = require('express');
-const bodyParser = require('body-parser');
-const { VoiceResponse } = require('twilio').twiml;
-const { getAssistantReply } = require('./assistant');
+require("dotenv").config();
+const express = require("express");
+const bodyParser = require("body-parser");
+const { VoiceResponse } = require("twilio").twiml;
+const { getAssistantReply } = require("./assistant");
 
 const fs = require("fs");
 const path = require("path");
@@ -16,79 +16,68 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // Parse JSON for dashboard API
 app.use(express.json());
 
-// Serve public dashboard
+// Serve dashboard static files
 app.use(express.static("public"));
 
-// File path
-const customersFile = path.join(__dirname, "../data/customers.json");
-
-
-// ----------------------------------------
-// TEST ROUTE
-// ----------------------------------------
-app.get('/', (req, res) => {
-  res.send('Voice Agent Server Running');
+// Serve main dashboard page
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "/public/dashboard.html"));
 });
 
-// ----------------------------------------
-// HEALTH CHECK (Render)
+// HEALTH CHECK (Render requirement)
 app.get("/healthz", (req, res) => res.send("OK"));
-// ----------------------------------------
-
 
 
 // ====================================================================
-//  🔥🔥  ORIGINAL TWILIO AI VOICE WEBHOOK (YOUR WORKING CODE)
+//  🔥 ORIGINAL TWILIO AI VOICE WEBHOOK (UNTOUCHED WORKING CODE)
 // ====================================================================
-app.post('/twilio/voice', async (req, res) => {
-  console.log('\n--- Twilio Webhook HIT ---');
-  console.log('Body:', req.body);
+app.post("/twilio/voice", async (req, res) => {
+  console.log("\n--- Twilio Webhook HIT ---");
+  console.log("Body:", req.body);
 
   try {
     const twiml = new VoiceResponse();
-    const speech = (req.body.SpeechResult || '').trim();
+    const speech = (req.body.SpeechResult || "").trim();
 
     // FIRST CALL — no speech yet
     if (!speech) {
-      console.log('No speech detected yet. Sending greeting...');
+      console.log("No speech detected yet. Sending greeting...");
 
       const gather = twiml.gather({
-        input: 'speech',
-        action: '/twilio/voice',
-        speechTimeout: 'auto'
+        input: "speech",
+        action: "/twilio/voice",
+        speechTimeout: "auto"
       });
 
-      gather.say(
-        'નમસ્તે. હું પેમેન્ટ અથવા સર્વિસ અપડેટ માટે ફોન કરી રહ્યો છું. તમારું નામ શું છે?'
-      );
+      gather.say("નમસ્તે. હું પેમેન્ટ અથવા સર્વિસ અપડેટ માટે ફોન કરી રહ્યો છું. તમારું નામ શું છે?");
 
-      res.type('text/xml');
+      res.type("text/xml");
       return res.send(twiml.toString());
     }
 
     // AFTER USER SPEAKS
-    console.log('User said:', speech);
+    console.log("User said:", speech);
 
     const aiReply = await getAssistantReply(speech);
-    console.log('AI Reply:', aiReply);
+    console.log("AI Reply:", aiReply);
 
     const gather = twiml.gather({
-      input: 'speech',
-      action: '/twilio/voice',
-      speechTimeout: 'auto'
+      input: "speech",
+      action: "/twilio/voice",
+      speechTimeout: "auto"
     });
 
     gather.say(aiReply);
 
-    res.type('text/xml');
+    res.type("text/xml");
     res.send(twiml.toString());
   } catch (error) {
-    console.error('Error in /twilio/voice:', error);
+    console.error("Error in /twilio/voice:", error);
 
     const twiml = new VoiceResponse();
-    twiml.say('માફ કરશો, ટેકનિકલ સમસ્યા છે. પછીથી ફરી પ્રયાસ કરીશું.');
+    twiml.say("માફ કરશો, ટેકનિકલ સમસ્યા છે. પછીથી ફરી પ્રયાસ કરીશું.");
 
-    res.type('text/xml');
+    res.type("text/xml");
     return res.send(twiml.toString());
   }
 });
@@ -96,6 +85,9 @@ app.post('/twilio/voice', async (req, res) => {
 //  END ORIGINAL WORKING AI CALL FLOW
 // ====================================================================
 
+
+// FILE PATH FOR JSON DB
+const customersFile = path.join(__dirname, "../data/customers.json");
 
 
 // ----------------------------------------
@@ -107,7 +99,7 @@ app.get("/api/customers", (req, res) => {
 });
 
 // ----------------------------------------
-// SAVE CUSTOMERS (ADD/EDIT/DELETE)
+// SAVE ALL CUSTOMERS (ADD/EDIT/DELETE)
 // ----------------------------------------
 app.post("/api/customers", (req, res) => {
   fs.writeFileSync(customersFile, JSON.stringify(req.body, null, 2));
