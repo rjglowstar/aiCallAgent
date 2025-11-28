@@ -1,0 +1,7 @@
+/.angular/cache
+.vs/
+.vscode/settings.json
+node_modules/
+.env
+*.env
+Extra_Info.txt
