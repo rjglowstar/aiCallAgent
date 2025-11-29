@@ -1,9 +1,20 @@
 [
   {
-    "name": "Ravi Jethva",
+    "name": "RJ",
     "phone": "+917817045624",
     "type": "payment",
-    "dueAmount": 35000,
-    "callTime": "16:20"
+    "dueAmount": 350000
+  },
+  {
+    "name": "Administrator",
+    "phone": "+917817045624",
+    "type": "payment",
+    "dueAmount": 45000
+  },
+  {
+    "name": "RJsds",
+    "phone": "+917817045624",
+    "type": "Information",
+    "dueAmount": 45000
   }
 ]

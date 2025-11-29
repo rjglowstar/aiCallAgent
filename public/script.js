@@ -1,14 +1,17 @@
+let customers = [];
 let editingIndex = null;
 
 // Load customers.json
 async function loadCustomers() {
+    console.log("Loading customers...");
+
     const res = await fetch('/api/customers');
-    const data = await res.json();
+    customers = await res.json();
 
     const tbody = document.querySelector("#customerTable tbody");
     tbody.innerHTML = "";
 
-    data.forEach((c, i) => {
+    customers.forEach((c, i) => {
         tbody.innerHTML += `
       <tr>
         <td>${c.name}</td>
@@ -27,6 +30,13 @@ async function loadCustomers() {
 
 function openAddForm() {
     editingIndex = null;
+    document.getElementById('formTitle').innerHTML = "Add Customer";
+
+    document.getElementById('name').value = "";
+    document.getElementById('phone').value = "";
+    document.getElementById('type').value = "";
+    document.getElementById('amount').value = "";
+
     document.getElementById('formBox').style.display = "block";
 }
 
@@ -36,51 +46,61 @@ function closeForm() {
 
 async function saveCustomer() {
     const obj = {
-        name: document.getElementById('name').value,
-        phone: document.getElementById('phone').value,
-        type: document.getElementById('type').value,
-        dueAmount: Number(document.getElementById('amount').value),
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        type: document.getElementById("type").value,
+        dueAmount: Number(document.getElementById("amount").value)
     };
 
-    let url = '/api/customers';
-    let method = 'POST';
-
-    if (editingIndex !== null) {
-        url = `/api/customers/${editingIndex}`;
-        method = 'PUT';
+    if (editingIndex === null) {
+        customers.push(obj);       // ADD
+    } else {
+        customers[editingIndex] = obj;  // EDIT
     }
 
-    await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(obj)
+    await fetch('/api/customers', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(customers)
     });
 
     closeForm();
     loadCustomers();
 }
 
-async function editCustomer(i) {
-    const res = await fetch('/api/customers');
-    const data = await res.json();
 
+function editCustomer(i) {
     editingIndex = i;
+    document.getElementById('formTitle').innerHTML = "Edit Customer";
 
-    document.getElementById('name').value = data[i].name;
-    document.getElementById('phone').value = data[i].phone;
-    document.getElementById('type').value = data[i].type;
-    document.getElementById('amount').value = data[i].dueAmount;
+    document.getElementById("name").value = customers[i].name;
+    document.getElementById("phone").value = customers[i].phone;
+    document.getElementById("type").value = customers[i].type;
+    document.getElementById("amount").value = customers[i].dueAmount;
 
     document.getElementById('formBox').style.display = "block";
 }
 
 async function deleteCustomer(i) {
-    await fetch(`/api/customers/${i}`, { method: 'DELETE' });
+    customers.splice(i, 1);
+
+    await fetch('/api/customers', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(customers)
+    });
+
     loadCustomers();
 }
 
+
 function callNow(phone) {
-    fetch(`/api/call/${phone}`);
+    fetch('/api/call', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone })
+    });
 }
+
 
 loadCustomers();
