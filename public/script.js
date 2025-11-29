@@ -94,7 +94,9 @@ async function saveCustomer() {
     });
 
     closeForm();
-    loadCustomers();
+    // wait for reload so UI is up-to-date, then show toast
+    await loadCustomers();
+    showToast('Customer details saved');
 }
 
 
@@ -121,7 +123,9 @@ async function deleteCustomer(i) {
             body: JSON.stringify(customers)
         });
 
-        loadCustomers();
+        await loadCustomers();
+        // show notification after successful delete
+        showToast('Customer deleted');
     });
 }
 
@@ -162,6 +166,24 @@ function closeConfirm() {
     const box = document.getElementById('confirmBox');
     if (overlay) overlay.style.display = 'none';
     if (box) { box.style.display = 'none'; box.setAttribute('aria-hidden', 'true'); }
+}
+
+// Toast helper
+function showToast(message, duration = 3000) {
+    const toast = document.getElementById('toast');
+    const inner = document.getElementById('toastInner');
+    if (!toast || !inner) {
+        console.log('Toast:', message);
+        return;
+    }
+    inner.textContent = message;
+    toast.classList.add('show');
+    // ensure pointer-events only when visible
+    toast.style.pointerEvents = 'auto';
+    setTimeout(() => {
+        toast.classList.remove('show');
+        toast.style.pointerEvents = 'none';
+    }, duration);
 }
 
 
