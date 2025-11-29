@@ -10,27 +10,31 @@ const { makeCall } = require("./makeCall");
 
 const app = express();
 
-// Parse Twilio webhook (speech)
-app.use(bodyParser.urlencoded({ extended: false }));
+// -------------------------------------------------------
+// PARSERS
+// -------------------------------------------------------
+app.use(bodyParser.urlencoded({ extended: false })); // Twilio speech
+app.use(express.json()); // Dashboard API
 
-// Parse JSON for dashboard API
-app.use(express.json());
+// -------------------------------------------------------
+// STATIC FILES (FIXED PATH - IMPORTANT)
+// -------------------------------------------------------
+const publicPath = path.join(__dirname, "../public");
 
-// Serve dashboard static files
-app.use(express.static("public"));
+app.use(express.static(publicPath));
 
-// Serve main dashboard page
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "/public/dashboard.html"));
+  res.sendFile(path.join(publicPath, "dashboard.html"));
 });
 
-// HEALTH CHECK (Render requirement)
+// -------------------------------------------------------
+// HEALTH CHECK (Render)
+// -------------------------------------------------------
 app.get("/healthz", (req, res) => res.send("OK"));
 
-
-// ====================================================================
-//  🔥 ORIGINAL TWILIO AI VOICE WEBHOOK (UNTOUCHED WORKING CODE)
-// ====================================================================
+// -------------------------------------------------------
+// ORIGINAL TWILIO VOICE WEBHOOK (UNTOUCHED)
+// -------------------------------------------------------
 app.post("/twilio/voice", async (req, res) => {
   console.log("\n--- Twilio Webhook HIT ---");
   console.log("Body:", req.body);
@@ -39,7 +43,6 @@ app.post("/twilio/voice", async (req, res) => {
     const twiml = new VoiceResponse();
     const speech = (req.body.SpeechResult || "").trim();
 
-    // FIRST CALL — no speech yet
     if (!speech) {
       console.log("No speech detected yet. Sending greeting...");
 
@@ -55,7 +58,6 @@ app.post("/twilio/voice", async (req, res) => {
       return res.send(twiml.toString());
     }
 
-    // AFTER USER SPEAKS
     console.log("User said:", speech);
 
     const aiReply = await getAssistantReply(speech);
@@ -81,34 +83,31 @@ app.post("/twilio/voice", async (req, res) => {
     return res.send(twiml.toString());
   }
 });
-// ====================================================================
-//  END ORIGINAL WORKING AI CALL FLOW
-// ====================================================================
 
-
-// FILE PATH FOR JSON DB
+// -------------------------------------------------------
+// JSON DATABASE FILE PATH
+// -------------------------------------------------------
 const customersFile = path.join(__dirname, "../data/customers.json");
 
-
-// ----------------------------------------
-// GET ALL CUSTOMERS
-// ----------------------------------------
+// -------------------------------------------------------
+// GET CUSTOMERS
+// -------------------------------------------------------
 app.get("/api/customers", (req, res) => {
   const data = fs.readFileSync(customersFile, "utf8");
   res.json(JSON.parse(data));
 });
 
-// ----------------------------------------
-// SAVE ALL CUSTOMERS (ADD/EDIT/DELETE)
-// ----------------------------------------
+// -------------------------------------------------------
+// SAVE CUSTOMERS (ADD/EDIT/DELETE)
+// -------------------------------------------------------
 app.post("/api/customers", (req, res) => {
   fs.writeFileSync(customersFile, JSON.stringify(req.body, null, 2));
   res.json({ success: true });
 });
 
-// ----------------------------------------
-// MANUAL CALL NOW
-// ----------------------------------------
+// -------------------------------------------------------
+// MANUAL CALL BUTTON
+// -------------------------------------------------------
 app.post("/api/call", async (req, res) => {
   const { phone } = req.body;
 
@@ -121,10 +120,9 @@ app.post("/api/call", async (req, res) => {
   }
 });
 
-
-// ----------------------------------------
+// -------------------------------------------------------
 // START SERVER
-// ----------------------------------------
+// -------------------------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n✔ Server running on port ${PORT}`);
