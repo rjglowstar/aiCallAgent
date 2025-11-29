@@ -26,8 +26,8 @@ function performCalls() {
   customers.forEach(c => {
     console.log("📞 Calling:", c.name, c.phone);
 
-    // ORIGINAL FUNCTIONALITY (kept exactly the same)
-    exec(`node src/makeCall.js ${c.phone}`, (error, stdout, stderr) => {
+    // ORIGINAL FUNCTIONALITY (kept exactly the same)    
+    exec(`node ./src/makeCall.js ${c.phone}`, (error, stdout, stderr) => {
       if (error) {
         console.error("❌ Exec Error:", error);
         return;
