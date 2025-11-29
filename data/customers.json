@@ -1,20 +1,14 @@
 [
   {
+    "name": "Sandip",
+    "phone": "+917878334322",
+    "type": "payment",
+    "dueAmount": 135000
+  },
+  {
     "name": "RJ",
     "phone": "+917817045624",
     "type": "payment",
     "dueAmount": 350000
-  },
-  {
-    "name": "Administrator",
-    "phone": "+917817045624",
-    "type": "payment",
-    "dueAmount": 45000
-  },
-  {
-    "name": "RJsds",
-    "phone": "+917817045624",
-    "type": "Information",
-    "dueAmount": 45000
   }
 ]
