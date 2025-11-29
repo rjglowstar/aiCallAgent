@@ -1,136 +1,142 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <title>AI Call Agent Dashboard</title>
-  <style>
-    body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; background:#f5f7fb; color:#111827; padding:28px; }
-    .card { background:#ffffff; border-radius:10px; box-shadow:0 8px 24px rgba(16,24,40,0.06); padding:18px; max-width:1100px; margin:0 auto; }
-    h2 { margin:0 0 6px; font-size:20px; }
-    #controls { display:flex; gap:12px; justify-content:space-between; align-items:center; margin-bottom:12px; }
-    #search { padding:8px 12px; border:1px solid #e6edf6; border-radius:8px; width:220px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.6); }
-    button.primary { background:#0b5fff; color:#fff; border:none; padding:9px 14px; border-radius:10px; cursor:pointer; font-weight:600; box-shadow:0 10px 30px rgba(11,95,255,0.12); }
-    button.ghost { background:transparent; border:1px solid #e6edf6; padding:8px 12px; border-radius:10px; cursor:pointer; }
-    .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; border:none; background:transparent; cursor:pointer; transition:all .12s ease; }
-    .icon-btn svg{ width:18px; height:18px; display:block; }
-    .icon-btn:hover{ transform:translateY(-2px); }
-    .icon-btn.edit{ background:linear-gradient(90deg,#ecf4ff, #eef9ff); color:#0b5fff; }
-    .icon-btn.delete{ background:linear-gradient(90deg,#fff5f6,#fff8f9); color:#ef4444; }
-    .icon-btn.call{ background:linear-gradient(90deg,#f1fff6,#f7fff9); color:#059669; }
-    td .icon-row{ display:flex; gap:8px; align-items:center; }
-    table { width:100%; border-collapse:collapse; margin-top:6px; }
-    th, td { text-align:left; padding:12px 14px; border-bottom:1px solid #eef2f7; font-size:14px; }
-    thead th { color:#374151; font-size:13px; text-transform:uppercase; letter-spacing:0.02em; }
-    tbody tr:nth-child(odd) { background:#fbfdff; }
-    .muted { color:#6b7280; font-size:13px; }
-    #overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.36); display:none; z-index:39; }
-    #formBox { display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:380px; max-width:92%; background:#fff; border-radius:12px; box-shadow:0 18px 60px rgba(16,24,40,0.18); padding:18px; z-index:40; box-sizing:border-box; }
-    input { width:100%; padding:8px 10px; margin:8px 0; border:1px solid #e6edf6; border-radius:8px; }
-    input{ box-sizing:border-box; }
-    /* Confirm box */
-    #confirmBox { display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:360px; max-width:92%; background:#fff; border-radius:10px; box-shadow:0 18px 60px rgba(16,24,40,0.18); padding:16px; z-index:41; }
-    #confirmBox .confirm-message { color:#111827; font-weight:600; margin:8px 0 12px; }
-    #confirmBox .confirm-actions { display:flex; justify-content:flex-end; gap:8px; }
-    /* Call screen */
-    #callBox { display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:420px; max-width:94%; background:linear-gradient(180deg,#ffffff,#fbfdff); border-radius:12px; box-shadow:0 22px 70px rgba(16,24,40,0.18); padding:18px; z-index:42; }
-    #callBox .call-title { font-size:16px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:10px; }
-    #callBox .call-body { margin-top:12px; display:flex; gap:14px; align-items:center; }
-    #callBox .spinner { width:54px; height:54px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#f1f8ff,#ecf9f8); box-shadow:0 8px 30px rgba(11,95,255,0.08); }
-    @keyframes pulse { 0% { transform:scale(1); opacity:1 } 50% { transform:scale(1.08); opacity:.86 } 100% { transform:scale(1); opacity:1 } }
-    #callBox .spinner .dot { width:18px; height:18px; border-radius:999px; background:linear-gradient(180deg,#0b5fff,#0a4ae6); animation:pulse 1s infinite; }
-    #callBox .call-status { color:#374151; font-size:14px; }
-    #callBox .call-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
-    .actions{ display:flex; gap:8px; margin-top:10px; justify-content:flex-end; }
-    @media (max-width:720px){ .card{padding:12px;} #controls{flex-direction:column; align-items:stretch;} #search{width:100%} #formBox{left:12px; right:12px; top:12px; width:auto;} }
-    /* Toast notification */
-    #toast { position:fixed; right:20px; bottom:24px; z-index:60; pointer-events:none; }
-    #toastInner { background:#111827; color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 10px 30px rgba(2,6,23,0.2); font-weight:600; transform:translateY(12px); opacity:0; transition:all .28s ease; }
-    #toast.show #toastInner { transform:translateY(0); opacity:1; pointer-events:auto; }
-  </style>
+  <link rel="stylesheet" href="./style.css">
 </head>
+
 <body>
 
-<div id="overlay" style="display:none;"></div>
+  <div id="overlay" style="display:none;"></div>
 
-<div class="card">
-  <div id="controls">
-    <div>
-      <h2>Customer List <span class="muted">(Total: <span id="totalCount">0</span>)</span></h2>
+  <div class="card">
+    <div id="controls">
+      <div>
+        <h2>Customer List <span class="muted">(Total: <span id="totalCount">0</span>)</span></h2>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input id="search" placeholder="Search name or phone" oninput="filterCustomers(this.value)">
+        <button class="primary" onclick="openAddForm()">＋ Add Customer</button>
+        <button class="primary" onclick="toggleSchedulePanel()">
+          ⏱ Schedule
+        </button>
+      </div>
     </div>
 
-    <div style="display:flex; gap:10px; align-items:center;">
-      <input id="search" placeholder="Search name or phone" oninput="filterCustomers(this.value)">
-      <button class="primary" onclick="openAddForm()">＋ Add Customer</button>
+    <!-- Scheduler info -->
+    <div id="schedulerInfo">
+      <div id="schedulePanel" class="controls-row" style="display:none;">
+        <!-- Left: Date & Mode -->
+        <div class="left-section">          
+          <div class="date-time" id="currentDateTime" style="display:none;"></div>
+        </div>
+        <div class="mode-selector">
+          <label>
+            <input type="radio" id="modeDaily" name="scheduleMode" value="daily" checked
+              onchange="onScheduleModeChange()">
+            Daily
+          </label>
+          <label>
+            <input type="radio" id="modeOnce" name="scheduleMode" value="once" onchange="onScheduleModeChange()">
+            Once
+          </label>
+        </div>
+
+        <!-- Center: Time Input -->
+        <div class="input-box">
+          <input id="dailyTime" type="time" title="Set daily time" value="01:35" placeholder="HH:MM">
+          <input id="onceDatetime" type="datetime-local" title="Set one-time call" style="display:none;"
+            placeholder="Date & Time">
+        </div>
+
+        <!-- Right: Buttons -->
+        <div class="button-group">
+          <button id="saveBtnDaily" class="btn-save" onclick="updateDailySchedule()" title="Save schedule">Save</button>
+          <button id="saveBtnOnce" class="btn-save" onclick="scheduleOnceCall()" style="display:none;"
+            title="Save schedule">Save</button>
+          <button id="toggleBtn" class="btn-toggle active" onclick="toggleScheduler()"
+            title="Pause scheduler">Pause</button>
+        </div>
+      </div>
+    </div>
+
+    <table id="customerTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Form (popup) -->
+  <div id="formBox" aria-hidden="true">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <h3 id="formTitle" style="margin:0;">Add New</h3>
+      <button class="icon-btn" title="Close" onclick="closeForm()" style="background:transparent;color:#374151;">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 6l12 12M6 18L18 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
+
+    <div style="margin-top:10px">
+      <input id="name" placeholder="Name">
+      <input id="phone" placeholder="Phone">
+      <input id="type" placeholder="Type">
+      <input id="amount" placeholder="Amount">
+    </div>
+
+    <div class="actions">
+      <button class="ghost" onclick="closeForm()">Cancel</button>
+      <button class="primary" onclick="saveCustomer()">Save</button>
     </div>
   </div>
 
-  <table id="customerTable">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Type</th>
-        <th>Amount</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<!-- Form (popup) -->
-<div id="formBox" aria-hidden="true">
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-    <h3 id="formTitle" style="margin:0;">Add New</h3>
-    <button class="icon-btn" title="Close" onclick="closeForm()" style="background:transparent;color:#374151;">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M6 18L18 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-  </div>
-
-  <div style="margin-top:10px">
-    <input id="name" placeholder="Name">
-    <input id="phone" placeholder="Phone">
-    <input id="type" placeholder="Type">
-    <input id="amount" placeholder="Amount">
-  </div>
-
-  <div class="actions">
-    <button class="ghost" onclick="closeForm()">Cancel</button>
-    <button class="primary" onclick="saveCustomer()">Save</button>
-  </div>
-</div>
-
-<!-- Confirm dialog -->
-<div id="confirmBox" aria-hidden="true">
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <h4 style="margin:0; font-size:15px;">Confirm</h4>
-  </div>
-  <div class="confirm-message">Are you sure you want to delete this customer?</div>
-  <div class="confirm-actions">
-    <button class="ghost" onclick="closeConfirm()">No</button>
-    <button class="primary" onclick="(function(){ /* placeholder replaced in JS */ })()">Yes</button>
-  </div>
-</div>
-
-<!-- Call screen -->
-<div id="callBox" aria-hidden="true">
-  <div class="call-title">Calling <span id="callToName" style="font-weight:600;color:#0b5fff;margin-left:6px;"></span></div>
-  <div class="call-body">
-    <div class="spinner"><div class="dot"></div></div>
-    <div>
-      <div id="callStatus" class="call-status">We are calling the customer. Please wait...</div>
-      <div style="margin-top:8px; color:#6b7280; font-size:13px;" id="callPhone"></div>
+  <!-- Confirm dialog -->
+  <div id="confirmBox" aria-hidden="true">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h4 style="margin:0; font-size:15px;">Confirm</h4>
+    </div>
+    <div class="confirm-message">Are you sure you want to delete this customer?</div>
+    <div class="confirm-actions">
+      <button class="ghost" onclick="closeConfirm()">No</button>
+      <button class="primary" onclick="(function(){ /* placeholder replaced in JS */ })()">Yes</button>
     </div>
   </div>
-  <div class="call-actions">
-    <!-- Cancel button removed as requested -->
-  </div>
-</div>
 
-<script src="script.js"></script>
-<!-- Toast notification -->
-<div id="toast" aria-live="polite">
-  <div id="toastInner">Saved</div>
-</div>
+  <!-- Call screen -->
+  <div id="callBox" aria-hidden="true">
+    <div class="call-title">Calling <span id="callToName" style="font-weight:600;color:#0b5fff;margin-left:6px;"></span>
+    </div>
+    <div class="call-body">
+      <div class="spinner">
+        <div class="dot"></div>
+      </div>
+      <div>
+        <div id="callStatus" class="call-status">We are calling the customer. Please wait...</div>
+        <div style="margin-top:8px; color:#6b7280; font-size:13px;" id="callPhone"></div>
+      </div>
+    </div>
+    <div class="call-actions">
+      <!-- Cancel button removed as requested -->
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <!-- Toast notification -->
+  <div id="toast" aria-live="polite">
+    <div id="toastInner">Saved</div>
+  </div>
 </body>
+
 </html>

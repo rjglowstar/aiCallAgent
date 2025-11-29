@@ -1,5 +1,6 @@
 let customers = [];
 let editingIndex = null;
+let isScheduleSet = false; // Track if a schedule is currently saved
 
 // Load customers.json
 async function loadCustomers() {
@@ -242,5 +243,318 @@ function closeCalling() {
     if (box) { box.style.display = 'none'; box.setAttribute('aria-hidden', 'true'); }
 }
 
+// Handle schedule mode change
+function onScheduleModeChange() {
+    const mode = document.querySelector('input[name="scheduleMode"]:checked').value;
+    const dailyTime = document.getElementById('dailyTime');
+    const onceDatetime = document.getElementById('onceDatetime');
+    const saveBtnDaily = document.getElementById('saveBtnDaily');
+    const saveBtnOnce = document.getElementById('saveBtnOnce');
+    
+    if (mode === 'daily') {
+        dailyTime.style.display = 'block';
+        onceDatetime.style.display = 'none';
+        saveBtnDaily.style.display = 'flex';
+        saveBtnOnce.style.display = 'none';
+    } else {
+        dailyTime.style.display = 'none';
+        onceDatetime.style.display = 'block';
+        saveBtnDaily.style.display = 'none';
+        saveBtnOnce.style.display = 'flex';
+    }
+}
+
+// Update daily schedule
+async function updateDailySchedule() {
+    const timeInput = document.getElementById('dailyTime').value;
+    if (!timeInput) {
+        showToast('⚠ Please select a time', 2000);
+        return;
+    }
+    
+    // Preserve the selected time before calling loadSchedulerInfo
+    const selectedTime = timeInput;
+    
+    const [hour, minute] = timeInput.split(':').map(Number);
+    const cronExpression = `${minute} ${hour} * * *`;
+    
+    try {
+        const res = await fetch('/api/scheduler/update-schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cronExpression })
+        });
+        
+        const data = await res.json();
+        if (!res.ok || data.success === false) {
+            showToast('❌ ' + (data.error || 'Failed'), 2000);
+            return;
+        }
+        
+        showToast(`✅ Daily at ${timeInput}`, 2000);
+        // Immediately update label and set flag before loadSchedulerInfo
+        setScheduleLabelFromDaily(selectedTime);
+        isScheduleSet = true;
+        // Preserve the input value
+        const dailyEl = document.getElementById('dailyTime');
+        if (dailyEl) dailyEl.value = selectedTime;
+        // Then sync with backend
+        await loadSchedulerInfo();
+    } catch (err) {
+        showToast('❌ Error', 2000);
+    }
+}
+
+// Schedule one-time call
+async function scheduleOnceCall() {
+    const datetimeInput = document.getElementById('onceDatetime').value;
+    if (!datetimeInput) {
+        showToast('⚠ Please select date and time', 2000);
+        return;
+    }
+    
+    // Preserve the selected datetime before calling loadSchedulerInfo
+    const selectedDatetime = datetimeInput;
+    
+    const dateTime = new Date(datetimeInput).toISOString();
+    
+    try {
+        const res = await fetch('/api/scheduler/schedule-once', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dateTime })
+        });
+        
+        const data = await res.json();
+        if (!res.ok || data.success === false) {
+            showToast('❌ ' + (data.error || 'Failed'), 2000);
+            return;
+        }
+        
+        const dt = new Date(datetimeInput);
+        showToast(`✅ Call at ${dt.toLocaleString()}`, 2000);
+        // Immediately update label and set flag before loadSchedulerInfo
+        setScheduleLabelFromOnce(selectedDatetime);
+        isScheduleSet = true;
+        // Preserve the input value
+        const onceEl = document.getElementById('onceDatetime');
+        if (onceEl) onceEl.value = selectedDatetime;
+        // Then sync with backend
+        await loadSchedulerInfo();
+    } catch (err) {
+        showToast('❌ Error', 2000);
+    }
+}
+
+// Load scheduler info on page load
+async function loadSchedulerInfo() {
+    try {
+        const res = await fetch('/api/scheduler/info');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        
+        const data = await res.json();
+        console.log('Scheduler info:', data);
+        
+        // Update toggle button state (Activate button removed from UI)
+        const toggleBtn = document.getElementById('toggleBtn');
+        if (toggleBtn) {
+            if (data.isActive) {
+                toggleBtn.classList.add('active');
+                toggleBtn.textContent = '⏸ Pause';
+            } else {
+                toggleBtn.classList.remove('active');
+                toggleBtn.textContent = '▶ Start';
+            }
+        }
+        
+        // Set schedule mode based on type
+        const modeOnceEl = document.getElementById('modeOnce');
+        const modeDailyEl = document.getElementById('modeDaily');
+        if (modeOnceEl && data.scheduleType === 'once') {
+            modeOnceEl.checked = true;
+        } else if (modeDailyEl) {
+            modeDailyEl.checked = true;
+        }
+        onScheduleModeChange();
+        
+        // Parse cron and populate inputs
+        if (data.cronExpression) {
+            const parts = data.cronExpression.split(' ');
+            const minute = parseInt(parts[0]);
+            const hour = parseInt(parts[1]);
+            const day = parseInt(parts[2]);
+            const month = parseInt(parts[3]);
+            
+            // Set daily time
+            const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+            const dailyEl = document.getElementById('dailyTime');
+            if (dailyEl) dailyEl.value = timeStr;
+            
+            // Set one-time datetime if applicable
+            if (day > 0 && day < 32) {
+                let dt = new Date();
+                dt.setHours(hour, minute, 0, 0);
+                dt.setDate(day);
+                if (month > 0 && month < 13) {
+                    dt.setMonth(month - 1);
+                }
+                
+                const isoString = dt.toISOString().slice(0, 16);
+                const onceEl = document.getElementById('onceDatetime');
+                if (onceEl) onceEl.value = isoString;
+            }
+        }
+        
+        // Update label to reflect saved schedule (prefer one-time if selected)
+        const dailyEl = document.getElementById('dailyTime');
+        const onceEl = document.getElementById('onceDatetime');
+        if (data.scheduleType === 'once' && onceEl && onceEl.value) {
+            setScheduleLabelFromOnce(onceEl.value);
+            isScheduleSet = true;
+        } else if (dailyEl && dailyEl.value) {
+            setScheduleLabelFromDaily(dailyEl.value);
+            isScheduleSet = true;
+        } else {
+            updateDateTimeDisplay();
+            isScheduleSet = false;
+        }
+        
+        // Update optional status badge and strike-through when paused
+        const badge = document.getElementById('statusBadge');
+        if (badge) badge.textContent = data.isActive ? 'Active' : 'Paused';
+        const dtEl = document.getElementById('currentDateTime');
+        if (dtEl) dtEl.classList.toggle('paused', !data.isActive);
+    } catch (err) {
+        console.error('Failed to load scheduler info:', err);
+        showToast('⚠ Error loading', 2000);
+    }
+}
+
+// Toggle scheduler Start/Pause
+async function toggleScheduler() {
+    try {
+        const res = await fetch('/api/scheduler/toggle', { 
+            method: 'POST',
+            body: JSON.stringify({ toggle: true }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok || data.success === false) {
+            showToast('❌ ' + (data.error || 'Failed'), 2000);
+            return;
+        }
+        
+        const message = data.isActive ? '✅ Started' : '⏸ Paused';
+        showToast(message, 1500);
+        // reflect paused/active state on the label immediately
+        const dtEl = document.getElementById('currentDateTime');
+        if (dtEl) dtEl.classList.toggle('paused', !data.isActive);
+        await loadSchedulerInfo();
+    } catch (err) {
+        showToast('❌ Error', 2000);
+    }
+}
+
+// Update current date and time display
+function updateDateTimeDisplay() {
+    // Only update to current time if no schedule is set; otherwise keep showing the schedule
+    if (isScheduleSet) return;
+    
+    const now = new Date();
+    const options = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+    const formatted = now.toLocaleDateString('en-US', options);
+    const dateTimeEl = document.getElementById('currentDateTime');
+    if (dateTimeEl) {
+        dateTimeEl.textContent = formatted;
+    }
+}
+
+// Set label to show daily schedule time (used after selecting or saving)
+function setScheduleLabelFromDaily(timeStr) {
+    const el = document.getElementById('currentDateTime');
+    if (!el) return;
+    if (!timeStr) {
+        updateDateTimeDisplay();
+        return;
+    }
+    el.textContent = `Daily at ${timeStr}`;
+}
+
+// Set label to show one-time scheduled datetime
+function setScheduleLabelFromOnce(isoDatetime) {
+    const el = document.getElementById('currentDateTime');
+    if (!el) return;
+    if (!isoDatetime) {
+        updateDateTimeDisplay();
+        return;
+    }
+    const dt = new Date(isoDatetime);
+    if (isNaN(dt.getTime())) {
+        updateDateTimeDisplay();
+        return;
+    }
+    el.textContent = dt.toLocaleString();
+}
+
+// Activate scheduler (turn on)
+async function activateScheduler() {
+    try {
+        const res = await fetch('/api/scheduler/toggle', {
+            method: 'POST',
+            body: JSON.stringify({ isActive: true }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok || data.success === false) {
+            showToast('❌ ' + (data.error || 'Failed'), 2000);
+            return;
+        }
+        
+        showToast('✅ Scheduler activated', 1500);
+        await loadSchedulerInfo();
+    } catch (err) {
+        showToast('❌ Error', 2000);
+    }
+}
 
 loadCustomers();
+loadSchedulerInfo();
+updateDateTimeDisplay();
+// Update date/time every minute
+setInterval(updateDateTimeDisplay, 60000);
+
+// Attach input listeners so selecting a time/date updates the label immediately
+(function attachScheduleInputs(){
+    const dailyInput = document.getElementById('dailyTime');
+    if (dailyInput) {
+        // Only update label when the user finishes editing (blur event), not during typing
+        dailyInput.addEventListener('change', (e) => setScheduleLabelFromDaily(e.target.value));
+    }
+    const onceInput = document.getElementById('onceDatetime');
+    if (onceInput) {
+        // Only update label when the user finishes editing (blur event), not during typing
+        onceInput.addEventListener('change', (e) => setScheduleLabelFromOnce(e.target.value));
+        // Set default to today at current time if not already set
+        if (!onceInput.value) {
+            const now = new Date();
+            const isoString = now.toISOString().slice(0, 16);
+            onceInput.value = isoString;
+        }
+    }
+})();
+
+
+function toggleSchedulePanel() {
+    const panel = document.getElementById("schedulePanel");
+
+    if (panel.style.display === "none") {
+        panel.style.display = "flex";
+    } else {
+        panel.style.display = "none";
+    }
+}
+
