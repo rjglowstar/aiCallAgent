@@ -2,6 +2,6 @@
   "scheduleType": "once",
   "cronExpression": null,
   "isActive": false,
-  "onceDateTime": "2025-12-01T10:14:00.000+05:30",
-  "schedule": "14 10 1 12 *"
+  "onceDateTime": "2025-12-01T10:30:00.000+05:30",
+  "schedule": "30 10 1 12 *"
 }
