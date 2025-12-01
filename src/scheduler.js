@@ -184,7 +184,12 @@ function updateSchedule(cronExpression) {
 
   // Start task now
   startCron(cronExpression, st.scheduleType === 'once', st.onceDateTime);
-  console.log('Scheduler active | Schedule:', cronExpression);
+  console.log(
+    `⏰ Daily schedule set (IST): ${cronExpression} | Time now: ${DateTime.now()
+      .setZone("Asia/Kolkata")
+      .toFormat("dd/MM/yyyy hh:mm a")}`
+  );
+
   return st;
 }
 
@@ -205,8 +210,11 @@ function scheduleOnce(dateTimeISO) {
   writeState(st);
 
   startCron(cronExpr, true, st.onceDateTime);
-  console.log('One-time schedule set for:', dt.toLocaleString(DateTime.DATETIME_MED));
+  console.log(
+    `📅 One-time schedule set for (IST): ${dt.setZone("Asia/Kolkata").toFormat("dd/MM/yyyy hh:mm a")}  | cron: ${cronExpr}`
+  );
   return st;
+
 }
 
 // auto-start if state says active on module load
