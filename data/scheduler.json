@@ -1,0 +1,7 @@
+{
+  "scheduleType": "once",
+  "cronExpression": null,
+  "isActive": false,
+  "onceDateTime": "2025-12-01T09:53:00.000+05:30",
+  "schedule": "53 9 1 12 *"
+}

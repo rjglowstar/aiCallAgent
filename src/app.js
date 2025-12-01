@@ -126,56 +126,90 @@ app.post("/api/call", async (req, res) => {
 // ----------------------------------------
 // SCHEDULER INFO & CONTROL
 // ----------------------------------------
+// ----------------------------------------
+// SAFE SCHEDULER INFO API
+// ----------------------------------------
 app.get("/api/scheduler/info", (req, res) => {
-  const state = scheduler.getState();
-  
-  // Parse schedule to extract time
-  const parts = state.schedule.split(' ');
-  const minute = parts[0];
-  const hour = parts[1];
-  const day = parts[2];
-  const month = parts[3];
-  
-  // Determine schedule type display
-  let scheduleDisplay = 'Daily';
-  if (state.scheduleType === 'once' && day !== '*' && month !== '*') {
-    scheduleDisplay = 'Once';
-  }
-  
-  // Calculate next run time
-  const now = new Date();
-  let nextRun = new Date();
-  nextRun.setHours(parseInt(hour), parseInt(minute), 0, 0);
-  
-  // If day is specific (one-time), use that day
-  if (day !== '*') nextRun.setDate(parseInt(day));
-  if (month !== '*') nextRun.setMonth(parseInt(month) - 1);
-  
-  // If past scheduled time today, move to tomorrow (for daily)
-  if (now > nextRun && state.scheduleType === 'daily') {
-    nextRun.setDate(nextRun.getDate() + 1);
-  }
+  try {
+    const state = scheduler.getInfo();
 
-  res.json({
-    isActive: state.isActive,
-    scheduleType: state.scheduleType || 'daily',
-    schedule: `${scheduleDisplay} at ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
-    nextRun: nextRun.toLocaleString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    }),
-    nextRunISO: nextRun.toISOString(),
-    cronExpression: state.schedule
-  });
+    // No schedule created yet
+    if (!state || !state.schedule) {
+      return res.json({
+        isActive: false,
+        scheduleType: "none",
+        schedule: "Not scheduled",
+        nextRun: null,
+        nextRunISO: null,
+        cronExpression: null
+      });
+    }
+
+    const cron = state.schedule.trim().split(" ");
+
+    // cron must have 5 parts: min hour day month weekday
+    if (cron.length < 5) {
+      return res.json({
+        isActive: state.isActive || false,
+        scheduleType: "unknown",
+        schedule: state.schedule,
+        nextRun: null,
+        nextRunISO: null,
+        cronExpression: state.schedule
+      });
+    }
+
+    const [minute, hour, day, month] = cron;
+
+    // Prepare safe values
+    const h = hour === "*" ? 0 : parseInt(hour);
+    const m = minute === "*" ? 0 : parseInt(minute);
+    const d = day === "*" ? null : parseInt(day);
+    const mo = month === "*" ? null : parseInt(month) - 1;
+
+    let nextRun = new Date();
+
+    // Daily schedule
+    if (state.scheduleType === "daily") {
+      nextRun.setHours(h, m, 0, 0);
+
+      if (nextRun < new Date()) {
+        nextRun.setDate(nextRun.getDate() + 1);
+      }
+    }
+
+    // One-time schedule
+    else if (state.scheduleType === "once" && d && mo !== null) {
+      nextRun.setMonth(mo);
+      nextRun.setDate(d);
+      nextRun.setHours(h, m, 0, 0);
+    }
+
+    // Fallback safety
+    if (isNaN(nextRun.getTime())) {
+      nextRun = null;
+    }
+
+    res.json({
+      isActive: state.isActive,
+      scheduleType: state.scheduleType,
+      schedule: state.schedule,
+      nextRun: nextRun ? nextRun.toLocaleString() : null,
+      nextRunISO: nextRun ? nextRun.toISOString() : null,
+      cronExpression: state.schedule
+    });
+
+  } catch (err) {
+    console.error("Scheduler info crash:", err);
+    res.status(500).json({ error: "Failed to load scheduler info" });
+  }
 });
+
 
 // Start/Pause scheduler
 app.post("/api/scheduler/toggle", (req, res) => {
   try {
-    const state = scheduler.getState();
+    const state = scheduler.getInfo();
     const newState = scheduler.setActive(!state.isActive);
     res.json({ success: true, isActive: newState.isActive, scheduleType: newState.scheduleType });
   } catch (err) {
@@ -187,18 +221,18 @@ app.post("/api/scheduler/toggle", (req, res) => {
 // Update schedule time (expects { hour, minute })
 app.post("/api/scheduler/update-time", (req, res) => {
   const { hour, minute } = req.body;
-  
+
   if (hour === undefined || minute === undefined) {
     return res.status(400).json({ error: 'hour and minute required' });
   }
-  
+
   if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
     return res.status(400).json({ error: 'Invalid hour or minute' });
   }
-  
+
   // Build new cron expression: minute hour * * *
   const cronExpression = `${minute} ${hour} * * *`;
-  
+
   try {
     const newState = scheduler.updateSchedule(cronExpression);
     res.json({ success: true, ...newState });
@@ -210,11 +244,11 @@ app.post("/api/scheduler/update-time", (req, res) => {
 // Update schedule with cron expression (expects { cronExpression })
 app.post("/api/scheduler/update-schedule", (req, res) => {
   const { cronExpression } = req.body;
-  
+
   if (!cronExpression) {
     return res.status(400).json({ error: 'cronExpression required' });
   }
-  
+
   try {
     const newState = scheduler.updateSchedule(cronExpression);
     res.json({ success: true, ...newState });
@@ -226,22 +260,22 @@ app.post("/api/scheduler/update-schedule", (req, res) => {
 // Schedule one-time call (expects { dateTime: ISO string })
 app.post("/api/scheduler/schedule-once", (req, res) => {
   const { dateTime } = req.body;
-  
+
   if (!dateTime) {
     return res.status(400).json({ error: 'dateTime (ISO format) required' });
   }
-  
+
   try {
     const dt = new Date(dateTime);
     if (isNaN(dt.getTime())) {
       return res.status(400).json({ error: 'Invalid datetime format' });
     }
-    
+
     const now = new Date();
     if (dt <= now) {
       return res.status(400).json({ error: 'Scheduled time must be in the future' });
     }
-    
+
     const newState = scheduler.scheduleOnce(dateTime);
     res.json({ success: true, ...newState });
   } catch (err) {

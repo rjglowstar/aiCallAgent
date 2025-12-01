@@ -1,7 +1,7 @@
 [
   {
     "name": "Sandip",
-    "phone": "+917878334322",
+    "phone": "+917878334320",
     "type": "payment",
     "dueAmount": 47980
   },
@@ -10,11 +10,5 @@
     "phone": "+917817045624",
     "type": "payment",
     "dueAmount": 350000
-  },
-  {
-    "name": "Vikas",
-    "phone": "+919106798988",
-    "type": "payment",
-    "dueAmount": 135000
   }
 ]

@@ -12,8 +12,8 @@ async function loadCustomers() {
     const tbody = document.querySelector("#customerTable tbody");
     tbody.innerHTML = "";
 
-        customers.forEach((c, i) => {
-                tbody.innerHTML += `
+    customers.forEach((c, i) => {
+        tbody.innerHTML += `
             <tr>
                 <td>${c.name}</td>
                 <td>${c.phone}</td>
@@ -36,12 +36,12 @@ async function loadCustomers() {
                 </td>
             </tr>
         `;
-        });
+    });
 
-        // Update total count
-        const total = document.getElementById('totalCount');
-        if (total) total.textContent = customers.length;
-    }
+    // Update total count
+    const total = document.getElementById('totalCount');
+    if (total) total.textContent = customers.length;
+}
 
 function openAddForm() {
     editingIndex = null;
@@ -61,7 +61,7 @@ function openAddForm() {
         box.setAttribute('aria-hidden', 'false');
     }
 
-    setTimeout(()=> document.getElementById('name').focus(), 80);
+    setTimeout(() => document.getElementById('name').focus(), 80);
 }
 
 function closeForm() {
@@ -201,7 +201,7 @@ function callNow(phone) {
         body: JSON.stringify({ phone })
     }).then(async (res) => {
         let data = {};
-        try { data = await res.json(); } catch (e) {}
+        try { data = await res.json(); } catch (e) { }
         const status = document.getElementById('callStatus');
         if (status) status.textContent = data?.message || 'Call started';
         // close after a short delay
@@ -250,7 +250,7 @@ function onScheduleModeChange() {
     const onceDatetime = document.getElementById('onceDatetime');
     const saveBtnDaily = document.getElementById('saveBtnDaily');
     const saveBtnOnce = document.getElementById('saveBtnOnce');
-    
+
     if (mode === 'daily') {
         dailyTime.style.display = 'block';
         onceDatetime.style.display = 'none';
@@ -271,26 +271,26 @@ async function updateDailySchedule() {
         showToast('⚠ Please select a time', 2000);
         return;
     }
-    
+
     // Preserve the selected time before calling loadSchedulerInfo
     const selectedTime = timeInput;
-    
+
     const [hour, minute] = timeInput.split(':').map(Number);
     const cronExpression = `${minute} ${hour} * * *`;
-    
+
     try {
         const res = await fetch('/api/scheduler/update-schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cronExpression })
         });
-        
+
         const data = await res.json();
         if (!res.ok || data.success === false) {
             showToast('❌ ' + (data.error || 'Failed'), 2000);
             return;
         }
-        
+
         showToast(`✅ Daily at ${timeInput}`, 2000);
         // Immediately update label and set flag before loadSchedulerInfo
         setScheduleLabelFromDaily(selectedTime);
@@ -312,25 +312,25 @@ async function scheduleOnceCall() {
         showToast('⚠ Please select date and time', 2000);
         return;
     }
-    
+
     // Preserve the selected datetime before calling loadSchedulerInfo
     const selectedDatetime = datetimeInput;
-    
+
     const dateTime = new Date(datetimeInput).toISOString();
-    
+
     try {
         const res = await fetch('/api/scheduler/schedule-once', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dateTime })
         });
-        
+
         const data = await res.json();
         if (!res.ok || data.success === false) {
             showToast('❌ ' + (data.error || 'Failed'), 2000);
             return;
         }
-        
+
         const dt = new Date(datetimeInput);
         showToast(`✅ Call at ${dt.toLocaleString()}`, 2000);
         // Immediately update label and set flag before loadSchedulerInfo
@@ -351,10 +351,10 @@ async function loadSchedulerInfo() {
     try {
         const res = await fetch('/api/scheduler/info');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        
+
         const data = await res.json();
         console.log('Scheduler info:', data);
-        
+
         // Update toggle button state (Activate button removed from UI)
         const toggleBtn = document.getElementById('toggleBtn');
         if (toggleBtn) {
@@ -366,7 +366,7 @@ async function loadSchedulerInfo() {
                 toggleBtn.textContent = '▶ Start';
             }
         }
-        
+
         // Set schedule mode based on type
         const modeOnceEl = document.getElementById('modeOnce');
         const modeDailyEl = document.getElementById('modeDaily');
@@ -376,35 +376,39 @@ async function loadSchedulerInfo() {
             modeDailyEl.checked = true;
         }
         onScheduleModeChange();
-        
-        // Parse cron and populate inputs
-        if (data.cronExpression) {
-            const parts = data.cronExpression.split(' ');
-            const minute = parseInt(parts[0]);
-            const hour = parseInt(parts[1]);
-            const day = parseInt(parts[2]);
-            const month = parseInt(parts[3]);
-            
-            // Set daily time
-            const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
-            const dailyEl = document.getElementById('dailyTime');
-            if (dailyEl) dailyEl.value = timeStr;
-            
-            // Set one-time datetime if applicable
-            if (day > 0 && day < 32) {
-                let dt = new Date();
-                dt.setHours(hour, minute, 0, 0);
-                dt.setDate(day);
-                if (month > 0 && month < 13) {
-                    dt.setMonth(month - 1);
+
+        // Parse cron and populate inputs (safe)
+        if (data.cronExpression && typeof data.cronExpression === "string") {
+            const parts = data.cronExpression.trim().split(" ");
+
+            if (parts.length >= 5) {
+                const minute = parseInt(parts[0]);
+                const hour = parseInt(parts[1]);
+                const day = parseInt(parts[2]);
+                const month = parseInt(parts[3]);
+
+                // Set daily time
+                if (!isNaN(hour) && !isNaN(minute)) {
+                    const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+                    const dailyEl = document.getElementById('dailyTime');
+                    if (dailyEl) dailyEl.value = timeStr;
                 }
-                
-                const isoString = dt.toISOString().slice(0, 16);
-                const onceEl = document.getElementById('onceDatetime');
-                if (onceEl) onceEl.value = isoString;
+
+                // Set once datetime
+                if (!isNaN(day) && !isNaN(month) && day > 0 && day <= 31 && month > 0 && month <= 12) {
+                    const dt = new Date();
+                    dt.setHours(hour, minute, 0, 0);
+                    dt.setDate(day);
+                    dt.setMonth(month - 1);
+
+                    const isoString = dt.toISOString().slice(0, 16);
+                    const onceEl = document.getElementById('onceDatetime');
+                    if (onceEl) onceEl.value = isoString;
+                }
             }
         }
-        
+
+
         // Update label to reflect saved schedule (prefer one-time if selected)
         const dailyEl = document.getElementById('dailyTime');
         const onceEl = document.getElementById('onceDatetime');
@@ -418,7 +422,7 @@ async function loadSchedulerInfo() {
             updateDateTimeDisplay();
             isScheduleSet = false;
         }
-        
+
         // Update optional status badge and strike-through when paused
         const badge = document.getElementById('statusBadge');
         if (badge) badge.textContent = data.isActive ? 'Active' : 'Paused';
@@ -433,19 +437,19 @@ async function loadSchedulerInfo() {
 // Toggle scheduler Start/Pause
 async function toggleScheduler() {
     try {
-        const res = await fetch('/api/scheduler/toggle', { 
+        const res = await fetch('/api/scheduler/toggle', {
             method: 'POST',
             body: JSON.stringify({ toggle: true }),
             headers: { 'Content-Type': 'application/json' }
         });
-        
+
         const data = await res.json();
-        
+
         if (!res.ok || data.success === false) {
             showToast('❌ ' + (data.error || 'Failed'), 2000);
             return;
         }
-        
+
         const message = data.isActive ? '✅ Started' : '⏸ Paused';
         showToast(message, 1500);
         // reflect paused/active state on the label immediately
@@ -461,7 +465,7 @@ async function toggleScheduler() {
 function updateDateTimeDisplay() {
     // Only update to current time if no schedule is set; otherwise keep showing the schedule
     if (isScheduleSet) return;
-    
+
     const now = new Date();
     const options = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
     const formatted = now.toLocaleDateString('en-US', options);
@@ -506,14 +510,14 @@ async function activateScheduler() {
             body: JSON.stringify({ isActive: true }),
             headers: { 'Content-Type': 'application/json' }
         });
-        
+
         const data = await res.json();
-        
+
         if (!res.ok || data.success === false) {
             showToast('❌ ' + (data.error || 'Failed'), 2000);
             return;
         }
-        
+
         showToast('✅ Scheduler activated', 1500);
         await loadSchedulerInfo();
     } catch (err) {
@@ -528,7 +532,7 @@ updateDateTimeDisplay();
 setInterval(updateDateTimeDisplay, 60000);
 
 // Attach input listeners so selecting a time/date updates the label immediately
-(function attachScheduleInputs(){
+(function attachScheduleInputs() {
     const dailyInput = document.getElementById('dailyTime');
     if (dailyInput) {
         // Only update label when the user finishes editing (blur event), not during typing
